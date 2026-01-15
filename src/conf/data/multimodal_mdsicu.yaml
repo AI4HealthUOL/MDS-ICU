@@ -1,0 +1,9 @@
+defaults:
+  - base
+
+name: "mds_icu" 
+path: "data/memmap"
+fs: 100.
+annotation: false
+cols_static: ["features"]
+cols_static_cat: []

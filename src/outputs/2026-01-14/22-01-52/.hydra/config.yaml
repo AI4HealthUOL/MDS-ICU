@@ -1,0 +1,196 @@
+base:
+  optimizer: adam
+  auc_maximization: false
+  lr:
+  - 0.001
+  weight_decay: 0.001
+  lr_schedule: const
+  lr_num_warmup_steps: 1000
+  discriminative_lr_factor: 0.1
+  train_head_only: false
+  linear_eval: false
+  batch_size: 32
+  metric_checkpointing: ''
+  aggregate_strided_multi_predictions: true
+  fs: 100.0
+  input_size: 250
+  input_size_dl: -1
+  chunk_length_train: 0
+  chunk_length_val: -1
+  chunk_length_valtest: -1
+  stride_train: -1
+  stride_val: -1
+  stride_valtest: -1
+  stride_export: -1
+  input_channels: 12
+  freq_bins: 0
+  input_channels_cat: 0
+  input_channels_cont: 1602
+  normalize: false
+  label_aggregation_epoch_length: -1
+  label_aggregation_majority_vote: false
+  label_aggregation_binary: false
+  return_idxs: false
+  sample_items_per_record: 1
+data0:
+  _target_: clinical_ts.config.BaseConfigData
+  name: mdsicu
+  path: data/memmap
+  df_filename: df_memmap.pkl
+  path_label: ''
+  fs: 100.0
+  col_lbl: label
+  cols_static:
+  - features
+  cols_static_cat: []
+  col_train_fold: strat_fold
+  col_val_fold: strat_fold
+  col_test_fold: strat_fold
+  train_fold_ids:
+  - x-1
+  - x-2
+  val_fold_ids:
+  - '-2'
+  test_fold_ids:
+  - '-1'
+  input_channels_filter: []
+  label_filter: []
+  annotation: false
+  fs_annotation: -1.0
+  allow_multiple_keys: true
+ts0:
+  _target_: clinical_ts.template_modules.TimeSeriesEncoder
+  timesteps_per_token: 1
+  input_format_seq_last: true
+  name: tsenc
+  enc:
+    _target_: clinical_ts.ts.encoder.NoEncoder
+    timesteps_per_token: 1
+    input_format_seq_last: true
+  pred:
+    _target_: clinical_ts.ts.s4.S4Predictor
+    model_dim: 512
+    causal: false
+    state_dim: 8
+    layers: 4
+    dropout: 0.2
+    tie_dropout: true
+    prenorm: false
+    batchnorm: false
+    backbone: s42
+  head:
+    _target_: clinical_ts.ts.head.PoolingHead
+    multi_prediction: false
+    local_pool_max: false
+    local_pool_kernel_size: 0
+    local_pool_stride: 0
+    output_layer: false
+  pre:
+    _target_: ''
+  post:
+    _target_: ''
+  head_ssl:
+    _target_: ''
+    multi_prediction: false
+  static:
+    _target_: ''
+  quant:
+    _target_: ''
+    embedding_dim: 128
+    vocab_size: 320
+    target_dim: 0
+    num_codebooks: 2
+  mask:
+    _target_: ''
+    mask_probability: 0.065
+    mask_span: 10
+  loss:
+    _target_: ''
+    loss_type: ''
+    pretraining_targets: 0
+  ema:
+    _target_: ''
+    momentum: 0.9996
+    pretrained: ''
+    update_ema: true
+    update_every_k_batches: 1
+    module_name:
+    - predictor
+    transpose_axes_after_hook: []
+    target_dim: 0
+  pass_static: true
+static:
+  _target_: clinical_ts.tabular.realmlp.RealMLP
+  embedding_dims: []
+  vocab_sizes: []
+  output_dim: 64
+  hidden_dim: 256
+  layers: 4
+  preprocessing: true
+  activation: selu
+head:
+  _target_: clinical_ts.ts.head.SequentialHead
+  multi_prediction: false
+  head0:
+    _target_: clinical_ts.ts.head.PoolingHead
+    multi_prediction: false
+    local_pool_max: false
+    local_pool_kernel_size: 0
+    local_pool_stride: 0
+    output_layer: false
+  head1:
+    _target_: clinical_ts.head.multimodal.ConcatFusionHead
+    multi_prediction: false
+  head2:
+    _target_: ''
+    multi_prediction: false
+loss:
+  _target_: clinical_ts.loss.supervised.BinaryCrossEntropyFocalLoss
+  loss_type: supervised
+  supervised_type: classification_multi
+  pos_weight: []
+  ignore_nans: true
+  gamma: 2.0
+trainer:
+  executable: ''
+  revision: ''
+  username: nstrodt
+  export_features: ''
+  export_predictions: true
+  epochs: 20
+  frozen_epochs: 0
+  num_workers: 4
+  resume: ''
+  pretrained: ''
+  pretrained_keys_filter:
+  - ts_encoder.encoder.
+  - ts_encoder.predictor.
+  eval_only: ''
+  output_path: .
+  metadata: ''
+  gpus: 1
+  num_nodes: 1
+  precision: 32
+  strategy: auto
+  accumulate: 1
+  checkpoint_every_n_train_steps: 0
+  checkpoint_every_n_epochs: 1
+  fp32_matmul_precision: highest
+  lr_find: false
+  auto_batch_size: false
+  refresh_rate: 0
+task:
+  mainclass: clinical_ts.task.multimodal.MultimodalModel
+  introduce_nan_columns: false
+  nan_columns_as_cat: false
+metric0:
+  _target_: clinical_ts.metric.base.MetricAUROC
+  name: auroc
+  aggregation: mean
+  key_summary_metric: macro
+  mode_summary_metric: max
+  verbose: macro
+  bootstrap_report_nans: true
+  bootstrap_iterations: 1000
+  bootstrap_alpha: 0.95
+  precision_recall: false
